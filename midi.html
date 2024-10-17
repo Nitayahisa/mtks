@@ -7,10 +7,19 @@
 </head>
 <body>
   <input type="file" id="midiFileInput" accept=".mid">
+  <button id="startButton">Start Audio</button>
+  
   <script src="https://cdn.jsdelivr.net/npm/jsmidgen"></script>
   <script>
-    // Web Audio APIの初期化
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    let audioContext;
+
+    // オーディオコンテキストの初期化
+    document.getElementById('startButton').addEventListener('click', () => {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        console.log('Audio context started');
+      }
+    });
 
     // 矩形波オシレーターの作成
     function createSquareOscillator(noteFrequency) {
@@ -51,6 +60,11 @@
 
     // MIDIファイル読み込み時の処理
     document.getElementById('midiFileInput').addEventListener('change', async (event) => {
+      if (!audioContext) {
+        alert('Please click "Start Audio" button before loading MIDI file.');
+        return;
+      }
+
       const file = event.target.files[0];
       if (file) {
         const arrayBuffer = await file.arrayBuffer();
