@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Square Wave MIDI Player</title>
+</head>
+<body>
+  <input type="file" id="midiFileInput" accept=".mid">
+  <script src="https://cdn.jsdelivr.net/npm/jsmidgen"></script>
+  <script>
+    // Web Audio APIの初期化
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+    // 矩形波オシレーターの作成
+    function createSquareOscillator(noteFrequency) {
+      const oscillator = audioContext.createOscillator();
+      oscillator.type = 'square'; // 矩形波
+      oscillator.frequency.setValueAtTime(noteFrequency, audioContext.currentTime);
+      oscillator.connect(audioContext.destination);
+      return oscillator;
+    }
+
+    // MIDIファイルの解析と再生
+    function playMIDI(midiData) {
+      const ticksPerBeat = midiData.header.ticksPerBeat;
+
+      midiData.tracks.forEach(track => {
+        let currentTime = 0;
+        track.forEach(event => {
+          currentTime += event.deltaTime / ticksPerBeat;
+
+          if (event.type === 'noteOn') {
+            const noteFrequency = midiNoteToFrequency(event.noteNumber);
+            const oscillator = createSquareOscillator(noteFrequency);
+
+            // ノートオン: 音を再生
+            oscillator.start(audioContext.currentTime + currentTime);
+
+            // ノートオフ: 一定時間後に音を停止
+            oscillator.stop(audioContext.currentTime + currentTime + 0.5);
+          }
+        });
+      });
+    }
+
+    // MIDIノート番号を周波数に変換
+    function midiNoteToFrequency(noteNumber) {
+      return 440 * Math.pow(2, (noteNumber - 69) / 12);
+    }
+
+    // MIDIファイル読み込み時の処理
+    document.getElementById('midiFileInput').addEventListener('change', async (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        const arrayBuffer = await file.arrayBuffer();
+        const midiData = new Midi(arrayBuffer); // jsmidgenを使ってMIDIファイルを解析
+        playMIDI(midiData);
+      }
+    });
+  </script>
+</body>
+</html>
