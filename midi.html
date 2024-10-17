@@ -8,8 +8,8 @@
 <body>
   <input type="file" id="midiFileInput" accept=".mid">
   <button id="startButton">Start Audio</button>
-  
-  <script src="https://cdn.jsdelivr.net/npm/jsmidgen"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/midi-parser-js/dist/MIDIParser.min.js"></script>
   <script>
     let audioContext;
 
@@ -30,17 +30,23 @@
       return oscillator;
     }
 
-    // MIDIファイルの解析と再生
-    function playMIDI(midiData) {
-      const ticksPerBeat = midiData.header.ticksPerBeat;
+    // MIDIノート番号を周波数に変換
+    function midiNoteToFrequency(noteNumber) {
+      return 440 * Math.pow(2, (noteNumber - 69) / 12);
+    }
 
-      midiData.tracks.forEach(track => {
+    // MIDIファイルの解析と再生
+    function playMIDI(parsed) {
+      const ticksPerBeat = parsed.timeDivision;
+
+      parsed.track.forEach(track => {
         let currentTime = 0;
-        track.forEach(event => {
+
+        track.event.forEach(event => {
           currentTime += event.deltaTime / ticksPerBeat;
 
-          if (event.type === 'noteOn') {
-            const noteFrequency = midiNoteToFrequency(event.noteNumber);
+          if (event.type === 9) { // noteOn
+            const noteFrequency = midiNoteToFrequency(event.data[0]);
             const oscillator = createSquareOscillator(noteFrequency);
 
             // ノートオン: 音を再生
@@ -53,11 +59,6 @@
       });
     }
 
-    // MIDIノート番号を周波数に変換
-    function midiNoteToFrequency(noteNumber) {
-      return 440 * Math.pow(2, (noteNumber - 69) / 12);
-    }
-
     // MIDIファイル読み込み時の処理
     document.getElementById('midiFileInput').addEventListener('change', async (event) => {
       if (!audioContext) {
@@ -68,8 +69,8 @@
       const file = event.target.files[0];
       if (file) {
         const arrayBuffer = await file.arrayBuffer();
-        const midiData = new Midi(arrayBuffer); // jsmidgenを使ってMIDIファイルを解析
-        playMIDI(midiData);
+
+        MIDIParser.parse(arrayBuffer, playMIDI); // midi-parser-jsを使ってMIDIファイルを解析
       }
     });
   </script>
